@@ -1,0 +1,15 @@
+-- KLYNTAP base schema. Run in a Supabase SQL migration after enabling pgcrypto.
+create extension if not exists pgcrypto;
+create type card_status as enum ('active','inactive','unassigned','pending');
+create type user_role as enum ('customer','admin');
+create table public.profiles (id uuid primary key references auth.users(id) on delete cascade, username text unique, full_name text, role user_role not null default 'customer', created_at timestamptz not null default now(), constraint username_safe check (username !~* '^(admin|dashboard|login|api|n|urun|products|support|settings)$'));
+create table public.businesses (id uuid primary key default gen_random_uuid(), owner_id uuid not null references public.profiles(id), name text not null, created_at timestamptz not null default now());
+create table public.products (id uuid primary key default gen_random_uuid(), slug text unique not null, name text not null, description text, price numeric, sale_price numeric, type text, features jsonb not null default '[]', customizable boolean not null default true, stock integer, status text not null default 'active');
+create table public.nfc_cards (id uuid primary key default gen_random_uuid(), slug text unique not null, owner_id uuid references public.profiles(id), business_id uuid references public.businesses(id), name text not null, status card_status not null default 'unassigned', current_destination_id uuid, created_at timestamptz not null default now(), updated_at timestamptz not null default now());
+create table public.card_destinations (id uuid primary key default gen_random_uuid(), card_id uuid not null references public.nfc_cards(id) on delete cascade, url text not null, label text, is_active boolean not null default true, created_at timestamptz not null default now());
+alter table public.nfc_cards add constraint nfc_current_destination foreign key (current_destination_id) references public.card_destinations(id) on delete set null;
+create table public.orders (id uuid primary key default gen_random_uuid(), owner_id uuid references public.profiles(id), status text not null default 'pending', total numeric not null default 0, customer_data jsonb not null default '{}', created_at timestamptz not null default now());
+create table public.order_items (id uuid primary key default gen_random_uuid(), order_id uuid not null references public.orders(id) on delete cascade, product_id uuid references public.products(id), quantity integer not null check(quantity > 0), customization jsonb not null default '{}');
+create table public.tap_events (id bigint generated always as identity primary key, card_id uuid not null references public.nfc_cards(id) on delete cascade, timestamp timestamptz not null default now(), device_type text, user_agent text, referrer text, country text, city text);
+create index tap_events_card_time_idx on public.tap_events(card_id,timestamp desc); create index nfc_cards_slug_idx on public.nfc_cards(slug);
+-- Enable RLS and add owner/admin policies before exposing tables to browser clients.
