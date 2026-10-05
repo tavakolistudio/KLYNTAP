@@ -1,1 +1,13 @@
-import {notFound} from 'next/navigation';import {Brand} from '@/components/site';const reserved=['admin','dashboard','login','api','n','urun','products','support','settings'];export default async function Profile({params}:{params:Promise<{username:string}>}){const {username}=await params;if(reserved.includes(username))notFound();return <main style={{minHeight:'100vh',background:'var(--ice)',padding:'28px 16px'}}><div style={{maxWidth:350,margin:'auto'}}><Brand/><div className="phone" style={{marginTop:38}}><div className="phone-screen"><div className="avatar"/><div className="profile-name">Mohammad Tavakoli</div><div className="profile-sub">Tavakoli Studio<br/>Photographer & Filmmaker</div>{['WhatsApp','Instagram','Website','Portfolio','Google Maps','Call','Save Contact'].map(x=><a className="profile-button" href="#" key={x}>{x}<span style={{float:'right'}}>↗</span></a>)}</div></div><p className="mono" style={{fontSize:10,textAlign:'center',marginTop:24}}>POWERED BY KLYNTAP</p></div></main>}
+import { notFound } from 'next/navigation';
+import { PublicProfilePage } from '@/components/public-profile';
+import { getPublicProfile } from '@/lib/profiles';
+
+const reserved = ['admin', 'dashboard', 'login', 'api', 'n', 'urun', 'products', 'support', 'settings'];
+
+export default async function Profile({ params }: { params: Promise<{ username: string }> }) {
+  const { username } = await params;
+  if (reserved.includes(username.toLowerCase())) notFound();
+  const profile = getPublicProfile(username);
+  if (!profile) notFound();
+  return <PublicProfilePage profile={profile}/>;
+}
